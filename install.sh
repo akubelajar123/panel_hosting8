@@ -1,11 +1,11 @@
 #!/bin/bash
 
 # Warna ANSI
-GREEN=\033[0;32m
-RED=\033[0;31m
-YELLOW=\033[0;33m
-BLUE=\033[0;34m
-NC=\033[0m # No Color
+GREEN=\'\\033[0;32m\'
+RED=\'\\033[0;31m\'
+YELLOW=\'\\033[0;33m\'
+BLUE=\'\\033[0;34m\'
+NC=\'\\033[0m\' # No Color
 
 LOG_FILE="/var/log/hosting-panel-install.log"
 
@@ -24,7 +24,7 @@ function success_message {
 
 # Fungsi untuk menampilkan pesan error dan keluar
 function error_exit {
-    local MESSAGE="${1:-"Unknown Error"}"
+    local MESSAGE="${1:-\"Unknown Error\"}"
     echo -e "${RED}✖ ERROR: ${MESSAGE}${NC}"
     log_message "ERROR: ${MESSAGE}"
     exit 1
@@ -43,17 +43,16 @@ function display_banner {
     echo "  ____                            _        _   _             _ _           "
     echo " |  _ \                          | |      | | (_)           | | |          "
     echo " | |_) | ___  ___ ___  _ __   ___| |_ __ _| |_ _ _ __   __| | | ___ _ __ "
-    echo " |  _ < / _ \/ __/ _ \| \'_ \ / _ \ __/ _\` | __| | \'_ \ / _\` | |/ _ \ \'__|"
+    echo " |  _ < / _ \/ __/ _ \| \'\'_ \ / _ \ __/ _\\` | __| | \'\'_ \ / _\\` | |/ _ \ \'\'_|"
     echo " | |_) |  __/ (_| (_) | | | |  __/ || (_| | |_| | | | | (_| | |  __/ |  "
-    echo " |____/ \___|\___\___/|_| |_|\___|\__\__,_|\__|_|_| |_|\__,_|_|\___|_|  "
+    echo " |____/ \___|\___\___/|_| |_|\___|\__\\__,_|\__|_|_|_| |_|\\__,_|_|\___|_|  "
     echo "                                                                         "
     echo "  _   _             _ _           _           _                          "
     echo " | | (_)           | | |         | |         | |                         "
     echo " | |_ _ _ __   __| | | ___ _ __ | |__   __ _| | ___                     "
-    echo " | __| | \'_ \ / _\` | |/ _ \ \'__| | 
- \ / _\` | |/ _ \                    "
+    echo " | __| | \'\'_ \ / _\\` | |/ _ \ \'\'_| | \'\'_ \ / _\\` | |/ _ \                    "
     echo " | |_| | | | | (_| | |  __/ |    | |_) | (_| | |  __/                    "
-    echo "  \__|_|_| |_|\__,_|_|\___|_|    |_.__/ \__,_|_|\___|                    "
+    echo "  \\__|_|_| |_|\\__,_|_|\\___|_|    |_.__/ \\__,_|_|\\___|                    "
     echo -e "${NC}"
     echo -e "${GREEN}Selamat datang di Instalasi Panel Hosting!${NC}"
     echo -e "${YELLOW}Skrip ini akan menginstal dan mengkonfigurasi panel hosting berbasis Docker.${NC}"
@@ -63,14 +62,14 @@ function display_banner {
 # Fungsi untuk menampilkan spinner loading
 function start_spinner {
     PID=$!
-    spin='-\\ / | /'
+    spin=\'-\\ / | /\'
     i=0
     while kill -0 $PID 2>/dev/null; do
         i=$(( (i+1) % 4 ))
-        printf "\r${BLUE}%c${NC} %s" "${spin:$i:1}" "$1"
+        printf "\\r${BLUE}%c${NC} %s" "${spin:$i:1}" "$1"
         sleep .1
     done
-    printf "\r%s\n" " "
+    printf "\\r%s\\n" " "
 }
 
 function stop_spinner {
@@ -116,25 +115,25 @@ function run_command_with_retry_and_spinner {
     error_exit "${MESSAGE} gagal setelah ${RETRIES} percobaan."
 }
 
-# Fungsi untuk memeriksa konektivitas internet
-function check_internet_connectivity {
-    log_message "Memeriksa konektivitas internet..."
-    local RETRIES=10
-    local DELAY=6
-    for i in $(seq 1 $RETRIES);
-    do
-        log_message "Mencoba ping google.com (Percobaan ${i}/${RETRIES})"
-        ping -c 1 google.com &> /dev/null
-        if [ $? -eq 0 ]; then
-            success_message "Koneksi internet terdeteksi."
-            return 0
-        else
-            warning_message "Tidak ada koneksi internet. Menunggu ${DELAY} detik sebelum mencoba lagi..."
-            sleep ${DELAY}
-        fi
-    done
-    error_exit "Tidak ada koneksi internet setelah beberapa percobaan. Pastikan VPS Anda terhubung ke internet."
-}
+# Fungsi untuk memeriksa konektivitas internet (DIHAPUS)
+# function check_internet_connectivity {
+#     log_message "Memeriksa konektivitas internet..."
+#     local RETRIES=10
+#     local DELAY=6
+#     for i in $(seq 1 $RETRIES);
+#     do
+#         log_message "Mencoba ping google.com (Percobaan ${i}/${RETRIES})"
+#         ping -c 1 google.com &> /dev/null
+#         if [ $? -eq 0 ]; then
+#             success_message "Koneksi internet terdeteksi."
+#             return 0
+#         else
+#             warning_message "Tidak ada koneksi internet. Menunggu ${DELAY} detik sebelum mencoba lagi..."
+#             sleep ${DELAY}
+#         fi
+#     done
+#     error_exit "Tidak ada koneksi internet setelah beberapa percobaan. Pastikan VPS Anda terhubung ke internet."
+# }
 
 # Fungsi untuk memeriksa hak akses sudo
 function check_sudo_privileges {
@@ -154,7 +153,7 @@ function install_docker {
     run_command_with_retry_and_spinner "sudo install -m 0755 -d /etc/apt/keyrings" "Membuat direktori keyrings"
     run_command_with_retry_and_spinner "curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo gpg --dearmor -o /etc/apt/keyrings/docker.gpg" "Mengunduh kunci GPG Docker"
     run_command_with_retry_and_spinner "sudo chmod a+r /etc/apt/keyrings/docker.gpg" "Mengatur izin kunci GPG Docker"
-    run_command_with_retry_and_spinner "echo \"deb [arch=\"$(dpkg --print-architecture)\" signed-by=/etc/apt/keyrings/docker.gpg] https://download.docker.com/linux/ubuntu \"$(. /etc/os-release && echo \"$VERSION_CODENAME\") stable\" | sudo tee /etc/apt/sources.list.d/docker.list > /dev/null" "Menambahkan repositori Docker"
+    run_command_with_retry_and_spinner "echo \"deb [arch=\\"$(dpkg --print-architecture)\\" signed-by=/etc/apt/keyrings/docker.gpg] https://download.docker.com/linux/ubuntu \\"$(. /etc/os-release && echo \\"$VERSION_CODENAME\\") stable\\" | sudo tee /etc/apt/sources.list.d/docker.list > /dev/null" "Menambahkan repositori Docker"
     run_command_with_retry_and_spinner "sudo apt-get update" "Memperbarui daftar paket setelah menambahkan repositori Docker"
     run_command_with_retry_and_spinner "sudo apt-get install -y docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin" "Menginstal Docker"
     
@@ -231,11 +230,11 @@ log_message "Memulai instalasi Panel Hosting..."
 # Get the directory where the script is located
 SCRIPT_DIR=$(dirname "$(readlink -f "$0")")
 
-# Change current working directory to the script\\\'s directory
+# Change current working directory to the script\\\\'s directory
 cd "${SCRIPT_DIR}" || error_exit "Gagal masuk ke direktori skrip: ${SCRIPT_DIR}"
 
 # Pre-flight checks
-check_internet_connectivity
+# check_internet_connectivity # DIHAPUS SESUAI PERMINTAAN
 check_sudo_privileges
 
 # Hentikan dan hapus kontainer Docker yang ada untuk proyek ini
@@ -280,7 +279,7 @@ success_message "Alamat IP VPS terdeteksi: ${VPS_IP}"
 
 # Perbarui API_BASE_URL di frontend/src/lib/api.js
 log_message "Memperbarui API_BASE_URL di frontend/src/lib/api.js..."
-run_command_with_retry_and_spinner "sudo sed -i \"s|http://localhost:5000/api|http://${VPS_IP}:5000/api|g\" \"${INSTALL_DIR}/frontend/src/lib/api.js\"" "Memperbarui API_BASE_URL di frontend"
+sudo sed -i "s|http://localhost:5000/api|http://${VPS_IP}:5000/api|g" "${INSTALL_DIR}/frontend/src/lib/api.js" || error_exit "Gagal memperbarui API_BASE_URL."
 success_message "API_BASE_URL berhasil diperbarui ke http://${VPS_IP}:5000/api"
 
 # Buat file docker-compose.yaml

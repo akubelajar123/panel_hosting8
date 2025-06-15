@@ -115,6 +115,21 @@ function install_docker_compose {
     fi
 }
 
+# Fungsi untuk mengkonfigurasi firewall (UFW)
+function configure_firewall {
+    log_message "Mengkonfigurasi firewall (UFW)..."
+    run_command_with_retry "sudo apt-get install -y ufw" || log_message "Peringatan: Gagal menginstal UFW. Lanjutkan tanpa konfigurasi firewall otomatis."
+    if command -v ufw &> /dev/null; then
+        run_command_with_retry "sudo ufw allow 22/tcp" || log_message "Peringatan: Gagal mengizinkan port SSH (22/tcp) di UFW."
+        run_command_with_retry "sudo ufw allow 80/tcp" || log_message "Peringatan: Gagal mengizinkan port HTTP (80/tcp) di UFW."
+        run_command_with_retry "sudo ufw allow 5000/tcp" || log_message "Peringatan: Gagal mengizinkan port Backend API (5000/tcp) di UFW."
+        run_command_with_retry "sudo ufw --force enable" || error_exit "Gagal mengaktifkan UFW. Periksa konfigurasi firewall secara manual."
+        log_message "Firewall (UFW) berhasil dikonfigurasi dan diaktifkan."
+    else
+        log_message "UFW tidak terinstal atau tidak ditemukan. Lewati konfigurasi firewall."
+    fi
+}
+
 # Main script
 PROGNAME=$(basename "$0")
 
@@ -136,12 +151,31 @@ log_message "Memulai instalasi Panel Hosting..."
 # Get the directory where the script is located
 SCRIPT_DIR=$(dirname "$(readlink -f "$0")")
 
-# Change current working directory to the script\'s directory
+# Change current working directory to the script\\'s directory
 cd "${SCRIPT_DIR}" || error_exit "Gagal masuk ke direktori skrip: ${SCRIPT_DIR}"
 
 # Pre-flight checks
 check_internet_connectivity
 check_sudo_privileges
+
+# Hentikan dan hapus kontainer Docker yang ada untuk proyek ini
+log_message "Menghentikan dan menghapus kontainer Docker yang ada untuk proyek hosting-panel..."
+# Periksa apakah docker-compose.yaml ada di INSTALL_DIR sebelum mencoba menghentikan kontainer
+if [ -f "${INSTALL_DIR}/docker-compose.yaml" ]; then
+    if sudo docker compose -f "${INSTALL_DIR}/docker-compose.yaml" ps &> /dev/null; then
+        run_command_with_retry "sudo docker compose -f \"${INSTALL_DIR}/docker-compose.yaml\" down -v" || log_message "Peringatan: Gagal menghentikan dan menghapus kontainer Docker yang ada. Mungkin ada masalah izin atau kontainer sudah tidak ada."
+    else
+        log_message "Tidak ada kontainer Docker hosting-panel yang berjalan dari ${INSTALL_DIR}."
+    fi
+else
+    log_message "File docker-compose.yaml tidak ditemukan di ${INSTALL_DIR}. Lewati penghentian kontainer lama."
+fi
+
+# Hapus direktori instalasi lama jika ada
+if [ -d "${INSTALL_DIR}" ]; then
+    log_message "Menghapus direktori instalasi lama: ${INSTALL_DIR}"
+    run_command_with_retry "sudo rm -rf ${INSTALL_DIR}" || error_exit "Gagal menghapus direktori instalasi lama: ${INSTALL_DIR}"
+fi
 
 # Periksa dan instal Docker
 check_docker_installed
@@ -210,6 +244,9 @@ log_message "File docker-compose.yaml berhasil dibuat."
 # Jalankan Docker Compose
 log_message "Membangun dan menjalankan kontainer Docker..."
 run_command_with_retry "sudo docker compose up --build -d" || error_exit "Gagal membangun dan menjalankan kontainer Docker."
+
+# Konfigurasi firewall
+configure_firewall
 
 log_message "Instalasi selesai! Panel hosting seharusnya berjalan di port 80 VPS Anda."
 log_message "Anda mungkin perlu menunggu beberapa menit agar semua layanan berjalan sepenuhnya."

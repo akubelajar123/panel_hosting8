@@ -1,10 +1,18 @@
-# Panduan Instalasi Panel Hosting Otomatis (Docker Compose)
+## Panduan Instalasi Panel Hosting Otomatis (Cerdas & Tangguh)
 
 Oleh: Manus AI
 
 ## Pendahuluan
 
-Skrip ini dirancang untuk mengotomatisasi proses instalasi panel hosting Anda di Virtual Private Server (VPS) menggunakan Docker dan Docker Compose. Dengan skrip ini, Anda dapat menginstal semua komponen yang diperlukan, termasuk backend (Python/Flask), frontend (React), dan database PostgreSQL, dengan mudah dan minim intervensi manual. Pendekatan berbasis Docker Compose memastikan lingkungan yang konsisten dan terisolasi, mengurangi potensi konflik dependensi dan menyederhanakan manajemen aplikasi.
+Skrip ini dirancang untuk mengotomatisasi proses instalasi panel hosting Anda di Virtual Private Server (VPS) menggunakan Docker dan Docker Compose. Versi skrip ini telah ditingkatkan secara signifikan untuk menjadi lebih cerdas dan tangguh, dengan fitur-fitur seperti:
+
+*   **Deteksi dan Instalasi Dependensi Otomatis:** Skrip akan secara otomatis memeriksa dan menginstal Docker serta Docker Compose jika belum ada.
+*   **Penanganan Kesalahan yang Ditingkatkan:** Setiap langkah kritis dalam skrip dilengkapi dengan penanganan kesalahan yang robust, termasuk percobaan ulang untuk perintah yang mungkin gagal sementara.
+*   **Pencatatan (Logging) Detail:** Semua output dan pesan penting akan dicatat ke file log (`/var/log/hosting-panel-install.log`) untuk memudahkan debugging jika terjadi masalah.
+*   **Pemeriksaan Pra-Instalasi:** Skrip akan memverifikasi konektivitas internet dan hak akses `sudo` sebelum memulai instalasi.
+*   **Idempoten:** Skrip dirancang agar dapat dijalankan berkali-kali tanpa menyebabkan efek samping yang tidak diinginkan (misalnya, tidak akan menginstal ulang Docker jika sudah ada).
+
+Pendekatan berbasis Docker Compose memastikan lingkungan yang konsisten dan terisolasi, mengurangi potensi konflik dependensi dan menyederhanakan manajemen aplikasi.
 
 ## Prasyarat Sistem
 
@@ -22,16 +30,16 @@ Skrip ini akan secara otomatis memeriksa dan menginstal Docker serta Docker Comp
 
 Ikuti langkah-langkah di bawah ini untuk menginstal panel hosting Anda:
 
-### Langkah 1: Unduh Skrip Instalasi
+### Langkah 1: Unduh Skrip Instalasi dan Proyek
 
-Salin skrip `install.sh` ke VPS Anda. Anda bisa menggunakan `wget` atau `curl` jika skrip dihosting di suatu tempat, atau mengunggahnya secara manual menggunakan SFTP.
-
-Misalnya, jika Anda mengunggahnya ke direktori home Anda:
+Kloning repositori GitHub yang berisi skrip instalasi dan semua file proyek ke VPS Anda:
 
 ```bash
-cd ~
-# Pastikan skrip install.sh sudah ada di sini
+git clone https://github.com/YOUR_USERNAME/YOUR_REPOSITORY_NAME.git
+cd YOUR_REPOSITORY_NAME
 ```
+
+**Ganti `YOUR_USERNAME` dengan nama pengguna GitHub Anda dan `YOUR_REPOSITORY_NAME` dengan nama repositori yang Anda buat.**
 
 ### Langkah 2: Berikan Izin Eksekusi
 
@@ -43,7 +51,7 @@ chmod +x install.sh
 
 ### Langkah 3: Jalankan Skrip Instalasi
 
-Jalankan skrip dengan hak akses `sudo`:
+Jalankan skrip dengan hak akses `sudo` dari dalam direktori proyek:
 
 ```bash
 sudo ./install.sh
@@ -51,14 +59,15 @@ sudo ./install.sh
 
 Skrip akan melakukan hal-hal berikut:
 
-1.  Memeriksa keberadaan Docker dan Docker Compose. Jika tidak ada, skrip akan menginstalnya secara otomatis.
-2.  Menyalin file panel hosting ke `/opt/hosting-panel`.
-3.  Membuat file `docker-compose.yaml` yang diperlukan untuk menjalankan layanan.
-4.  Membangun image Docker untuk backend dan frontend.
-5.  Menjalankan semua layanan (backend, frontend, database) dalam mode `detached` (di latar belakang).
-6.  Membersihkan file instalasi sementara.
+1.  Membuat file log di `/var/log/hosting-panel-install.log`.
+2.  Memeriksa konektivitas internet dan hak akses `sudo`.
+3.  Memeriksa keberadaan Docker dan Docker Compose. Jika tidak ada, skrip akan menginstalnya secara otomatis.
+4.  Menyalin file panel hosting ke `/opt/hosting-panel`.
+5.  Membuat file `docker-compose.yaml` yang diperlukan untuk menjalankan layanan.
+6.  Membangun image Docker untuk backend (memastikan `gunicorn` dan `psycopg2-binary` terinstal) dan frontend (dengan `--legacy-peer-deps` untuk frontend).
+7.  Menjalankan semua layanan (backend, frontend, database) dalam mode `detached` (di latar belakang).
 
-Proses ini mungkin memakan waktu beberapa menit, tergantung pada kecepatan internet dan spesifikasi VPS Anda. Anda akan melihat output di terminal yang menunjukkan progres instalasi.
+Proses ini mungkin memakan waktu beberapa menit, tergantung pada kecepatan internet dan spesifikasi VPS Anda. Anda akan melihat output di terminal yang menunjukkan progres instalasi, dan detail lebih lanjut akan dicatat di file log.
 
 ## Setelah Instalasi Berhasil
 
@@ -83,6 +92,11 @@ Anda dapat mengelola layanan panel hosting menggunakan perintah `docker compose`
 sudo docker compose ps
     ```
 
+*   **Melihat Log Layanan:**
+    ```bash
+sudo docker compose logs -f
+    ```
+
 *   **Menghentikan Layanan:**
     ```bash
 sudo docker compose down
@@ -93,18 +107,13 @@ sudo docker compose down
 sudo docker compose up -d
     ```
 
-*   **Melihat Log Layanan:**
-    ```bash
-sudo docker compose logs -f
-    ```
-
 ## Pemecahan Masalah (Troubleshooting)
 
 Jika Anda mengalami masalah selama atau setelah instalasi, periksa hal-hal berikut:
 
+*   **Log Instalasi:** Periksa file log instalasi di `/var/log/hosting-panel-install.log` untuk pesan error spesifik. Skrip dirancang untuk memberikan pesan error yang jelas jika terjadi masalah.
 *   **Koneksi Internet:** Pastikan VPS Anda memiliki koneksi internet yang stabil.
-*   **Ruang Disk:** Pastikan ada cukup ruang disk yang tersedia di VPS Anda.
-*   **Log Skrip:** Periksa output skrip `install.sh` untuk pesan error spesifik. Skrip dirancang untuk memberikan pesan error yang jelas jika terjadi masalah.
+*   **Ruang Disk:** Pastikan ada cukup ruang disk yang tersedia di VPS Anda. Anda bisa memeriksa ruang disk dengan perintah `df -h`.
 *   **Log Docker Compose:** Jika layanan tidak berjalan, periksa log Docker Compose:
     ```bash
 cd /opt/hosting-panel
@@ -123,9 +132,9 @@ Jika masalah berlanjut, catat pesan error yang spesifik dan cari solusinya di do
 
 ## Catatan Penting
 
-*   Skrip ini mengasumsikan instalasi baru di VPS yang bersih. Jika Anda memiliki konfigurasi Nginx atau layanan lain yang berjalan di port 80, mungkin ada konflik.
+*   Skrip ini mengasumsikan instalasi baru di VPS yang bersih. Jika Anda memiliki konfigurasi Nginx atau layanan lain yang berjalan di port 80, mungkin ada konflik. Konfigurasi Nginx untuk reverse proxy ke backend Docker Compose akan diperlukan secara manual setelah instalasi.
 *   Skrip ini menggunakan kredensial database default (`panel_user`/`secure_password`). Untuk lingkungan produksi, sangat disarankan untuk mengubahnya di file `docker-compose.yaml` sebelum menjalankan skrip.
-*   Untuk konfigurasi domain dan SSL (HTTPS), Anda perlu mengkonfigurasi Nginx di dalam kontainer atau menggunakan reverse proxy terpisah di luar Docker Compose. Skrip ini tidak mencakup konfigurasi SSL otomatis.
+*   Untuk konfigurasi domain dan SSL (HTTPS), Anda perlu mengkonfigurasi Nginx di luar kontainer Docker. Skrip ini tidak mencakup konfigurasi SSL otomatis.
 
 ---
 

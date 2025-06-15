@@ -30,7 +30,7 @@ function check_sudo_privileges {
     log_message "Memeriksa hak akses sudo..."
     sudo -v &> /dev/null
     if [ $? -ne 0 ]; then
-        error_exit "Skrip ini memerlukan hak akses sudo. Jalankan dengan 'sudo ./install.sh'."
+        error_exit "Skrip ini memerlukan hak akses sudo. Jalankan dengan \'sudo ./install.sh\'."
     fi
     log_message "Hak akses sudo terdeteksi."
 }
@@ -85,8 +85,8 @@ function install_docker {
     log_message "Docker berhasil diinstal. Anda mungkin perlu logout/login kembali agar perubahan grup berlaku dan Docker dapat dijalankan tanpa sudo."
     
     log_message "Memulai layanan Docker..."
-    sudo systemctl start docker || log_message "Peringatan: Gagal memulai layanan Docker secara otomatis. Coba 'sudo systemctl start docker' secara manual."
-    sudo systemctl enable docker || log_message "Peringatan: Gagal mengaktifkan layanan Docker saat boot. Coba 'sudo systemctl enable docker' secara manual."
+    sudo systemctl start docker || log_message "Peringatan: Gagal memulai layanan Docker secara otomatis. Coba \'sudo systemctl start docker\' secara manual."
+    sudo systemctl enable docker || log_message "Peringatan: Gagal mengaktifkan layanan Docker saat boot. Coba \'sudo systemctl enable docker\' secara manual."
 }
 
 # Fungsi untuk memeriksa apakah Docker Compose sudah terinstal
@@ -106,7 +106,7 @@ function install_docker_compose {
     log_message "Memulai instalasi Docker Compose..."
     # Docker Compose V2 sudah terinstal dengan docker-ce-cli, jadi ini hanya fallback untuk versi lama
     if ! command -v docker compose &> /dev/null; then
-        DOCKER_COMPOSE_VERSION=$(curl -s https://api.github.com/repos/docker/compose/releases/latest | grep 'tag_name' | cut -d \" -f 4)
+        DOCKER_COMPOSE_VERSION=$(curl -s https://api.github.com/repos/docker/compose/releases/latest | grep \'tag_name\' | cut -d \" -f 4)
         run_command_with_retry "sudo curl -L \"https://github.com/docker/compose/releases/download/${DOCKER_COMPOSE_VERSION}/docker-compose-$(uname -s)-$(uname -m)\" -o /usr/local/bin/docker-compose" || error_exit "Gagal mengunduh Docker Compose."
         run_command_with_retry "sudo chmod +x /usr/local/bin/docker-compose" || error_exit "Gagal mengatur izin Docker Compose."
         log_message "Docker Compose berhasil diinstal."
@@ -118,6 +118,15 @@ function install_docker_compose {
 # Main script
 PROGNAME=$(basename "$0")
 
+# Direktori instalasi default
+INSTALL_DIR="/opt/hosting-panel"
+
+# Periksa argumen untuk direktori instalasi kustom
+if [ -n "$1" ]; then
+    INSTALL_DIR="$1"
+    log_message "Direktori instalasi kustom diatur ke: ${INSTALL_DIR}"
+fi
+
 # Buat direktori log jika belum ada
 sudo mkdir -p $(dirname "${LOG_FILE}") || error_exit "Gagal membuat direktori log."
 sudo touch "${LOG_FILE}" || error_exit "Gagal membuat file log."
@@ -127,7 +136,7 @@ log_message "Memulai instalasi Panel Hosting..."
 # Get the directory where the script is located
 SCRIPT_DIR=$(dirname "$(readlink -f "$0")")
 
-# Change current working directory to the script's directory
+# Change current working directory to the script\'s directory
 cd "${SCRIPT_DIR}" || error_exit "Gagal masuk ke direktori skrip: ${SCRIPT_DIR}"
 
 # Pre-flight checks
@@ -141,17 +150,29 @@ check_docker_installed
 check_docker_compose_installed
 
 # Salin file panel hosting
-INSTALL_DIR="/opt/hosting-panel"
 log_message "Menyalin file panel hosting dari ${SCRIPT_DIR} ke ${INSTALL_DIR}..."
 run_command_with_retry "sudo mkdir -p ${INSTALL_DIR}" || error_exit "Gagal membuat direktori instalasi."
 run_command_with_retry "sudo cp -r ./* ${INSTALL_DIR}/" || error_exit "Gagal menyalin file panel hosting."
 
 cd ${INSTALL_DIR} || error_exit "Gagal masuk ke direktori instalasi: ${INSTALL_DIR}"
 
+# Dapatkan alamat IP VPS
+log_message "Mendapatkan alamat IP VPS..."
+VPS_IP=$(curl -s ifconfig.me)
+if [ -z "$VPS_IP" ]; then
+    error_exit "Gagal mendapatkan alamat IP VPS. Pastikan koneksi internet berfungsi."
+fi
+log_message "Alamat IP VPS terdeteksi: ${VPS_IP}"
+
+# Perbarui API_BASE_URL di frontend/src/lib/api.js
+log_message "Memperbarui API_BASE_URL di frontend/src/lib/api.js..."
+sudo sed -i "s|http://localhost:5000/api|http://${VPS_IP}:5000/api|g" "${INSTALL_DIR}/frontend/src/lib/api.js" || error_exit "Gagal memperbarui API_BASE_URL."
+log_message "API_BASE_URL berhasil diperbarui ke http://${VPS_IP}:5000/api"
+
 # Buat file docker-compose.yaml
 log_message "Membuat file docker-compose.yaml..."
 cat <<EOF > docker-compose.yaml
-version: '3.8'
+version: \'3.8\'
 services:
   backend:
     build: ./backend
